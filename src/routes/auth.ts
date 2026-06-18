@@ -24,6 +24,7 @@ passport.use(
             name: profile.displayName,
             avatar: profile.photos?.[0]?.value,
             googleId: profile.id,
+            role: "public",
           });
         }
         done(null, user as any);
@@ -36,7 +37,7 @@ passport.use(
 
 router.post("/register", async (req: Request, res: Response) => {
   try {
-    const { email, password, name } = req.body;
+    const { email, password, name, role } = req.body;
     if (!email || !password || !name) {
       res.status(400).json({ error: "email, password, and name are required" });
       return;
@@ -49,12 +50,12 @@ router.post("/register", async (req: Request, res: Response) => {
     }
 
     const hashed = await bcrypt.hash(password, 12);
-    const user = await User.create({ email, password: hashed, name });
+    const user = await User.create({ email, password: hashed, name, role: role || "public" });
 
-    const token = generateToken({ userId: user._id.toString(), email: user.email });
+    const token = generateToken({ userId: user._id.toString(), email: user.email, role: user.role });
     res.status(201).json({
       token,
-      user: { id: user._id.toString(), email: user.email, name: user.name, avatar: user.avatar },
+      user: { id: user._id.toString(), email: user.email, name: user.name, avatar: user.avatar, role: user.role },
     });
   } catch (err) {
     res.status(500).json({ error: "Registration failed" });
@@ -81,10 +82,10 @@ router.post("/login", async (req: Request, res: Response) => {
       return;
     }
 
-    const token = generateToken({ userId: user._id.toString(), email: user.email });
+    const token = generateToken({ userId: user._id.toString(), email: user.email, role: user.role });
     res.json({
       token,
-      user: { id: user._id.toString(), email: user.email, name: user.name, avatar: user.avatar },
+      user: { id: user._id.toString(), email: user.email, name: user.name, avatar: user.avatar, role: user.role },
     });
   } catch {
     res.status(500).json({ error: "Login failed" });
@@ -106,7 +107,7 @@ router.get(
         res.status(404).json({ error: "User not found" });
         return;
       }
-      res.json({ id: user._id.toString(), email: user.email, name: user.name, avatar: user.avatar });
+      res.json({ id: user._id.toString(), email: user.email, name: user.name, avatar: user.avatar, role: user.role });
     } catch {
       res.status(401).json({ error: "Invalid token" });
     }
@@ -123,7 +124,7 @@ router.get(
   passport.authenticate("google", { session: false, failureRedirect: "/login" }),
   (req: Request, res: Response) => {
     const user = req.user as any;
-    const token = generateToken({ userId: user._id.toString(), email: user.email });
+    const token = generateToken({ userId: user._id.toString(), email: user.email, role: user.role });
     res.redirect(`${process.env.CLIENT_URL || "http://localhost:3000"}?token=${token}`);
   }
 );

@@ -1,9 +1,11 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
+import type { Role } from "../models/User";
 
 export interface AuthPayload {
   userId: string;
   email: string;
+  role: Role;
 }
 
 declare global {
@@ -34,4 +36,18 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
   } catch {
     res.status(401).json({ error: "Invalid token" });
   }
+}
+
+export function requireRole(...roles: Role[]) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (!req.currentUser) {
+      res.status(401).json({ error: "Not authenticated" });
+      return;
+    }
+    if (!roles.includes(req.currentUser.role)) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
+    next();
+  };
 }
