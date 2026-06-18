@@ -1,132 +1,142 @@
-import { Router, Request, Response } from "express";
+import { Router, Request, Response, NextFunction } from "express";
 import bcrypt from "bcryptjs";
 import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
-import User from "../models/User";
-import jwt from "jsonwebtoken";
-import { generateToken } from "../middleware/auth";
+import User, { Role } from "../models/User";
+import { authMiddleware, generateToken } from "../middleware/auth";
+import { asyncHandler } from "../lib/async-handler";
+import { HttpError } from "../middleware/error-handler";
+import { registerSchema, loginSchema } from "../validators/auth";
+import { env } from "../config/env";
 
 const router = Router();
 
-passport.use(
-  new GoogleStrategy(
-    {
-      clientID: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-      callbackURL: `${process.env.BACKEND_URL || "http://localhost:5000"}/api/auth/callback/google`,
-    },
-    async (_accessToken, _refreshToken, profile, done) => {
-      try {
-        let user = await User.findOne({ googleId: profile.id });
-        if (!user) {
-          user = await User.create({
-            email: profile.emails?.[0]?.value || `${profile.id}@google.com`,
-            name: profile.displayName,
-            avatar: profile.photos?.[0]?.value,
-            googleId: profile.id,
-            role: "public",
-          });
-        }
-        done(null, user as any);
-      } catch (err) {
-        done(err as Error);
-      }
-    }
-  )
-);
+function toUserResponse(user: { _id: unknown; email: string; name: string; avatar?: string; role: Role }) {
+  return {
+    id: String(user._id),
+    email: user.email,
+    name: user.name,
+    avatar: user.avatar,
+    role: user.role,
+  };
+}
 
-router.post("/register", async (req: Request, res: Response) => {
-  try {
-    const { email, password, name, role } = req.body;
-    if (!email || !password || !name) {
-      res.status(400).json({ error: "email, password, and name are required" });
-      return;
+if (env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) {
+  passport.use(
+    new GoogleStrategy(
+      {
+        clientID: env.GOOGLE_CLIENT_ID,
+        clientSecret: env.GOOGLE_CLIENT_SECRET,
+        callbackURL: `${env.BACKEND_URL}/api/auth/callback/google`,
+      },
+      async (_accessToken, _refreshToken, profile, done) => {
+        try {
+          let user = await User.findOne({ googleId: profile.id });
+          if (!user) {
+            user = await User.create({
+              email: profile.emails?.[0]?.value || `${profile.id}@google.placeholder`,
+              name: profile.displayName || "Google User",
+              avatar: profile.photos?.[0]?.value,
+              googleId: profile.id,
+              role: "user",
+            });
+          }
+          done(null, user as unknown as Express.User);
+        } catch (err) {
+          done(err as Error);
+        }
+      }
+    )
+  );
+}
+
+router.post(
+  "/register",
+  asyncHandler(async (req: Request, res: Response) => {
+    const parsed = registerSchema.safeParse(req.body);
+    if (!parsed.success) {
+      throw new HttpError(400, parsed.error.issues[0]?.message || "Invalid payload");
     }
+    const { name, email, password, role } = parsed.data;
 
     const existing = await User.findOne({ email });
     if (existing) {
-      res.status(409).json({ error: "Email already registered" });
-      return;
+      throw new HttpError(409, "Email already registered");
     }
 
     const hashed = await bcrypt.hash(password, 12);
-    const user = await User.create({ email, password: hashed, name, role: role || "public" });
-
+    const user = await User.create({ name, email, password: hashed, role });
     const token = generateToken({ userId: user._id.toString(), email: user.email, role: user.role });
-    res.status(201).json({
-      token,
-      user: { id: user._id.toString(), email: user.email, name: user.name, avatar: user.avatar, role: user.role },
-    });
-  } catch (err) {
-    res.status(500).json({ error: "Registration failed" });
-  }
-});
 
-router.post("/login", async (req: Request, res: Response) => {
-  try {
-    const { email, password } = req.body;
-    if (!email || !password) {
-      res.status(400).json({ error: "email and password are required" });
-      return;
+    res.status(201).json({ token, user: toUserResponse(user) });
+  })
+);
+
+router.post(
+  "/login",
+  asyncHandler(async (req: Request, res: Response) => {
+    const parsed = loginSchema.safeParse(req.body);
+    if (!parsed.success) {
+      throw new HttpError(400, parsed.error.issues[0]?.message || "Invalid payload");
     }
+    const { email, password } = parsed.data;
 
     const user = await User.findOne({ email });
     if (!user || !user.password) {
-      res.status(401).json({ error: "Invalid credentials" });
-      return;
+      throw new HttpError(401, "Invalid credentials");
     }
 
     const match = await bcrypt.compare(password, user.password);
     if (!match) {
-      res.status(401).json({ error: "Invalid credentials" });
-      return;
+      throw new HttpError(401, "Invalid credentials");
     }
 
     const token = generateToken({ userId: user._id.toString(), email: user.email, role: user.role });
-    res.json({
-      token,
-      user: { id: user._id.toString(), email: user.email, name: user.name, avatar: user.avatar, role: user.role },
-    });
-  } catch {
-    res.status(500).json({ error: "Login failed" });
-  }
-});
+    res.json({ token, user: toUserResponse(user) });
+  })
+);
 
 router.get(
   "/me",
-  async (req: Request, res: Response) => {
-    const header = req.headers.authorization;
-    if (!header?.startsWith("Bearer ")) {
-      res.status(401).json({ error: "No token provided" });
-      return;
+  authMiddleware,
+  asyncHandler(async (req: Request, res: Response) => {
+    if (!req.currentUser) {
+      throw new HttpError(401, "Not authenticated");
     }
-    try {
-      const payload = jwt.verify(header.slice(7), process.env.JWT_SECRET || "dev-secret") as any;
-      const user = await User.findById(payload.userId).select("-password");
-      if (!user) {
-        res.status(404).json({ error: "User not found" });
-        return;
-      }
-      res.json({ id: user._id.toString(), email: user.email, name: user.name, avatar: user.avatar, role: user.role });
-    } catch {
-      res.status(401).json({ error: "Invalid token" });
+    const user = await User.findById(req.currentUser.userId).select("-password");
+    if (!user) {
+      throw new HttpError(404, "User not found");
     }
-  }
+    res.json(toUserResponse(user));
+  })
 );
 
 router.get(
   "/google",
-  passport.authenticate("google", { scope: ["profile", "email"], session: false })
+  (req: Request, res: Response, next: NextFunction) => {
+    if (!env.GOOGLE_CLIENT_ID) {
+      throw new HttpError(503, "Google login is not configured");
+    }
+    passport.authenticate("google", { scope: ["profile", "email"], session: false })(req, res, next);
+  }
 );
 
 router.get(
   "/callback/google",
-  passport.authenticate("google", { session: false, failureRedirect: "/login" }),
-  (req: Request, res: Response) => {
-    const user = req.user as any;
-    const token = generateToken({ userId: user._id.toString(), email: user.email, role: user.role });
-    res.redirect(`${process.env.CLIENT_URL || "http://localhost:3000"}?token=${token}`);
+  (req: Request, res: Response, next: NextFunction) => {
+    if (!env.GOOGLE_CLIENT_ID) {
+      throw new HttpError(503, "Google login is not configured");
+    }
+    passport.authenticate("google", { session: false, failureRedirect: "/login" }, (err: unknown, user: unknown) => {
+      if (err || !user) {
+        res.redirect(`${env.CLIENT_URL}/login?error=google_failed`);
+        return;
+      }
+      const u = user as { _id: unknown; email: string; role: Role };
+      const token = generateToken({ userId: String(u._id), email: u.email, role: u.role });
+      res.redirect(`${env.CLIENT_URL}/?token=${token}`);
+    })(req, res, next);
   }
 );
 
-export default router as Router;
+export default router;
