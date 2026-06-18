@@ -4,35 +4,41 @@ import mongoose from "mongoose";
 import cors from "cors";
 import passport from "passport";
 import bcrypt from "bcryptjs";
+import { env } from "./config/env";
+import { errorHandler, notFoundHandler, HttpError } from "./middleware/error-handler";
 import authRoutes from "./routes/auth";
 import User from "./models/User";
 
 const app = express();
-const PORT = process.env.PORT || 4000;
-const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017/legalease";
 
-app.use(cors());
+app.use(cors({ origin: env.CLIENT_URL, credentials: true }));
 app.use(express.json());
 app.use(passport.initialize());
 
 app.get("/health", (_req, res) => {
-  res.json({ status: "ok" });
+  res.json({ status: "ok", env: env.NODE_ENV });
 });
 
 app.use("/api/auth", authRoutes);
 
+app.use(notFoundHandler);
+app.use(errorHandler);
+
 async function start() {
   try {
-    await mongoose.connect(MONGO_URI);
+    await mongoose.connect(env.MONGO_URI);
     console.log("Connected to MongoDB");
 
-    const adminEmail = process.env.ADMIN_EMAIL;
-    const adminPassword = process.env.ADMIN_PASSWORD;
-    if (adminEmail && adminPassword) {
-      const existing = await User.findOne({ email: adminEmail });
+    if (env.ADMIN_EMAIL && env.ADMIN_PASSWORD) {
+      const existing = await User.findOne({ email: env.ADMIN_EMAIL });
       if (!existing) {
-        const hashed = await bcrypt.hash(adminPassword, 12);
-        await User.create({ email: adminEmail, password: hashed, name: "Admin", role: "admin" });
+        const hashed = await bcrypt.hash(env.ADMIN_PASSWORD, 12);
+        await User.create({
+          email: env.ADMIN_EMAIL,
+          password: hashed,
+          name: "Admin",
+          role: "admin",
+        });
         console.log("Admin user seeded");
       } else if (existing.role !== "admin") {
         existing.role = "admin";
@@ -40,12 +46,15 @@ async function start() {
         console.log("Admin role assigned");
       }
     }
-  } catch {
-    console.warn("MongoDB not available, starting without it");
+  } catch (err) {
+    console.warn("MongoDB not available, starting without it:", (err as Error).message);
+    if (env.NODE_ENV === "production") {
+      throw new HttpError(500, "Database connection failed");
+    }
   }
 
-  app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+  app.listen(env.PORT, () => {
+    console.log(`Server running on http://localhost:${env.PORT}`);
   });
 }
 
