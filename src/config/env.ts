@@ -3,10 +3,10 @@ import { z } from "zod";
 
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
-  PORT: z.coerce.number().int().positive().default(4000),
+  PORT: z.coerce.number().int().positive().default(5000),
   MONGO_URI: z.string().min(1, "MONGO_URI is required"),
   JWT_SECRET: z.string().min(8, "JWT_SECRET must be at least 8 characters"),
-  BACKEND_URL: z.string().url().default("http://localhost:4000"),
+  BACKEND_URL: z.string().url().default("http://localhost:5000"),
   CLIENT_URL: z.string().url().default("http://localhost:3000"),
   ADMIN_EMAIL: z.string().email().optional(),
   ADMIN_PASSWORD: z.string().min(6).optional(),
