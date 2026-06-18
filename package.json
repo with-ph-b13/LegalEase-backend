@@ -8,15 +8,23 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "cors": "^2",
     "dotenv": "^16",
     "express": "^5",
-    "mongoose": "^8"
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^8",
+    "passport": "^0.7.0",
+    "passport-google-oauth20": "^2.0.0"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^3.0.0",
     "@types/cors": "^2",
     "@types/express": "^5",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^22",
+    "@types/passport": "^1.0.17",
+    "@types/passport-google-oauth20": "^2.0.17",
     "tsx": "^4",
     "typescript": "^5"
   }
