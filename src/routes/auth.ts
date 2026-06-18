@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import User from "../models/User";
+import jwt from "jsonwebtoken";
 import { generateToken } from "../middleware/auth";
 
 const router = Router();
@@ -12,7 +13,7 @@ passport.use(
     {
       clientID: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-      callbackURL: "/api/auth/google/callback",
+      callbackURL: `${process.env.BACKEND_URL || "http://localhost:5000"}/api/auth/callback/google`,
     },
     async (_accessToken, _refreshToken, profile, done) => {
       try {
@@ -91,12 +92,34 @@ router.post("/login", async (req: Request, res: Response) => {
 });
 
 router.get(
+  "/me",
+  async (req: Request, res: Response) => {
+    const header = req.headers.authorization;
+    if (!header?.startsWith("Bearer ")) {
+      res.status(401).json({ error: "No token provided" });
+      return;
+    }
+    try {
+      const payload = jwt.verify(header.slice(7), process.env.JWT_SECRET || "dev-secret") as any;
+      const user = await User.findById(payload.userId).select("-password");
+      if (!user) {
+        res.status(404).json({ error: "User not found" });
+        return;
+      }
+      res.json({ id: user._id.toString(), email: user.email, name: user.name, avatar: user.avatar });
+    } catch {
+      res.status(401).json({ error: "Invalid token" });
+    }
+  }
+);
+
+router.get(
   "/google",
   passport.authenticate("google", { scope: ["profile", "email"], session: false })
 );
 
 router.get(
-  "/google/callback",
+  "/callback/google",
   passport.authenticate("google", { session: false, failureRedirect: "/login" }),
   (req: Request, res: Response) => {
     const user = req.user as any;
