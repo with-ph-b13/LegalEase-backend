@@ -34,6 +34,10 @@ async function start() {
         const hashed = await bcrypt.hash(adminPassword, 12);
         await User.create({ email: adminEmail, password: hashed, name: "Admin", role: "admin" });
         console.log("Admin user seeded");
+      } else if (existing.role !== "admin") {
+        existing.role = "admin";
+        await existing.save();
+        console.log("Admin role assigned");
       }
     }
   } catch {
