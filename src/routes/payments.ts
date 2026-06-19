@@ -35,6 +35,16 @@ router.post(
 );
 
 router.post(
+  "/verify-session",
+  asyncHandler(async (req: Request, res: Response) => {
+    const sessionId = req.body?.session_id || req.body?.sessionId;
+    const userId = req.currentUser?.userId;
+    const result = await paymentService.verifySession(sessionId, userId);
+    res.json(result);
+  })
+);
+
+router.post(
   "/hire/:hiringId",
   requireRole("user"),
   asyncHandler(async (req: Request, res: Response) => {
