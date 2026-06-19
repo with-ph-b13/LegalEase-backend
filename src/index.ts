@@ -11,6 +11,7 @@ import lawyerRoutes from "./routes/lawyers";
 import hiringRoutes from "./routes/hirings";
 import commentRoutes from "./routes/comments";
 import transactionRoutes from "./routes/transactions";
+import adminRoutes from "./routes/admin";
 import User from "./models/User";
 
 const app = express();
@@ -35,6 +36,7 @@ app.use("/api/hirings", hiringRoutes);
 app.use("/api/comments", commentRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/transactions", transactionRoutes);
+app.use("/api/admin", adminRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
