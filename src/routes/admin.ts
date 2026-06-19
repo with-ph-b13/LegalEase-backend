@@ -135,4 +135,68 @@ router.delete(
   })
 );
 
+router.get(
+  "/analytics",
+  asyncHandler(async (req: Request, res: Response) => {
+    const Lawyer = (await import("../models/Lawyer")).default;
+    const Hiring = (await import("../models/Hiring")).default;
+    const Transaction = (await import("../models/Transaction")).default;
+
+    const [
+      totalUsers,
+      totalLawyers,
+      totalHires,
+      revenueResult,
+      hiresOverTime,
+      revenueByCategory
+    ] = await Promise.all([
+      User.countDocuments({ role: "user" }),
+      Lawyer.countDocuments(),
+      Hiring.countDocuments(),
+      Transaction.aggregate([
+        { $match: { status: "succeeded" } },
+        { $group: { _id: null, total: { $sum: "$amount" } } }
+      ]),
+      Hiring.aggregate([
+        {
+          $group: {
+            _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+            count: { $sum: 1 }
+          }
+        },
+        { $sort: { _id: 1 } },
+        { $limit: 30 }
+      ]),
+      Transaction.aggregate([
+        { $match: { status: "succeeded", type: "hire_fee" } },
+        {
+          $lookup: {
+            from: "lawyers",
+            localField: "lawyerId",
+            foreignField: "_id",
+            as: "lawyer"
+          }
+        },
+        { $unwind: "$lawyer" },
+        {
+          $group: {
+            _id: "$lawyer.specialization",
+            total: { $sum: "$amount" }
+          }
+        },
+        { $sort: { total: -1 } }
+      ])
+    ]);
+
+    res.json({
+      totalUsers,
+      totalLawyers,
+      totalHires,
+      totalRevenue: revenueResult.length > 0 ? revenueResult[0].total : 0,
+      hiresOverTime,
+      revenueByCategory
+    });
+  })
+);
+
 export default router;
