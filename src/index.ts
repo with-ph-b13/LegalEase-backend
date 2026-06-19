@@ -10,6 +10,7 @@ import authRoutes from "./routes/auth";
 import lawyerRoutes from "./routes/lawyers";
 import hiringRoutes from "./routes/hirings";
 import commentRoutes from "./routes/comments";
+import transactionRoutes from "./routes/transactions";
 import User from "./models/User";
 
 const app = express();
@@ -33,6 +34,7 @@ app.use("/api/lawyers", lawyerRoutes);
 app.use("/api/hirings", hiringRoutes);
 app.use("/api/comments", commentRoutes);
 app.use("/api/payments", paymentRoutes);
+app.use("/api/transactions", transactionRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
