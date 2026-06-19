@@ -8,6 +8,7 @@ import { env } from "./config/env";
 import { errorHandler, notFoundHandler, HttpError } from "./middleware/error-handler";
 import authRoutes from "./routes/auth";
 import lawyerRoutes from "./routes/lawyers";
+import hiringRoutes from "./routes/hirings";
 import User from "./models/User";
 
 const app = express();
@@ -22,6 +23,7 @@ app.get("/health", (_req, res) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/lawyers", lawyerRoutes);
+app.use("/api/hirings", hiringRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
