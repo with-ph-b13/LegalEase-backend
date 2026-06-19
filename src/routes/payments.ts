@@ -38,7 +38,7 @@ router.post(
   "/hire/:hiringId",
   requireRole("user"),
   asyncHandler(async (req: Request, res: Response) => {
-    const result = await paymentService.createHireCheckout(req.params.hiringId, req.currentUser!.userId);
+    const result = await paymentService.createHireCheckout(req.params.hiringId as string, req.currentUser!.userId);
     res.json(result);
   })
 );

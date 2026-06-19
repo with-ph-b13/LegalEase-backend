@@ -35,7 +35,7 @@ router.post(
 
     const user = await User.findByIdAndUpdate(
       req.currentUser!.userId,
-      { $addToSet: { shortlist: new mongoose.Types.ObjectId(lawyerId) } },
+      { $addToSet: { shortlist: new mongoose.Types.ObjectId(lawyerId as string) } },
       { new: true }
     );
     
@@ -51,7 +51,7 @@ router.delete(
     
     const user = await User.findByIdAndUpdate(
       req.currentUser!.userId,
-      { $pull: { shortlist: new mongoose.Types.ObjectId(lawyerId) } },
+      { $pull: { shortlist: new mongoose.Types.ObjectId(lawyerId as string) } },
       { new: true }
     );
     

@@ -9,6 +9,7 @@ export interface IUser extends Document {
   avatar?: string;
   googleId?: string;
   role: Role;
+  shortlist?: mongoose.Types.ObjectId[];
   createdAt: Date;
   updatedAt: Date;
 }

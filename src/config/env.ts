@@ -24,7 +24,11 @@ if (!parsed.success) {
     .map((i) => `  - ${i.path.join(".") || "(root)"}: ${i.message}`)
     .join("\n");
   console.error("Invalid environment variables:\n" + issues);
-  process.exit(1);
+  if (process.env.NODE_ENV === "production" || process.env.VERCEL) {
+    throw new Error("Invalid environment variables:\n" + issues);
+  } else {
+    process.exit(1);
+  }
 }
 
 export const env = parsed.data;

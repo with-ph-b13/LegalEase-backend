@@ -7,7 +7,7 @@ import { HttpError } from "../middleware/error-handler";
 import { Types } from "mongoose";
 
 const stripe = new Stripe(env.STRIPE_SECRET_KEY, {
-  apiVersion: "2025-02-24.acacia"
+  apiVersion: "2025-02-24.acacia" as any
 });
 
 export async function createPublishCheckout(userId: string) {
