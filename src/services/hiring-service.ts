@@ -127,5 +127,14 @@ export async function respondToHire(id: string, lawyerUserId: string, status: "a
     throw new HttpError(404, "Pending hiring request not found or unauthorized");
   }
 
+  // Count active accepted-but-unpaid hires (i.e., status = "accepted")
+  const activeAcceptedCount = await Hiring.countDocuments({
+    lawyerId: lawyer._id,
+    status: "accepted"
+  }).exec();
+
+  const { recomputeStatus } = await import("./lawyer-service");
+  await recomputeStatus(String(lawyer._id), activeAcceptedCount);
+
   return toDto(hire);
 }
