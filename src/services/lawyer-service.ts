@@ -16,6 +16,7 @@ export interface PaginatedResult<T> {
 function toDto(doc: ILawyer | (ILawyer & { _id: Types.ObjectId | string })) {
   const d = doc as unknown as ILawyer & { _id: Types.ObjectId | string };
   return {
+    _id: String(d._id),
     id: String(d._id),
     userId: String(d.userId),
     name: d.name,
