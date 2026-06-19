@@ -54,6 +54,28 @@ export async function createComment(userId: string, lawyerId: string, text: stri
     rating
   });
 
+  // Trigger email notification to lawyer
+  try {
+    const Lawyer = (await import("../models/Lawyer")).default;
+    const User = (await import("../models/User")).default;
+    const lawyer = await Lawyer.findById(lawyerId).exec();
+    if (lawyer) {
+      const lawyerUser = await User.findById(lawyer.userId).exec();
+      if (lawyerUser) {
+        const commenter = await User.findById(userId).exec();
+        const commenterName = commenter ? commenter.name : "A user";
+        const { logEmail } = await import("./email-service");
+        logEmail(
+          lawyerUser.email,
+          "New Review Received!",
+          `Hi ${lawyer.name},\n\n${commenterName} left a review on your profile with a rating of ${rating}/5.\n\nReview Text:\n"${text}"\n\nBest regards,\nThe LegalEase Team`
+        );
+      }
+    }
+  } catch (e) {
+    console.error("Failed to send review notification email:", e);
+  }
+
   return toDto(doc);
 }
 

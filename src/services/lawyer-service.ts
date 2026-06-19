@@ -194,7 +194,35 @@ export async function assertOwner(lawyerId: string, userId: string) {
 }
 
 export async function incrementHiredCount(lawyerId: string) {
-  await Lawyer.findByIdAndUpdate(lawyerId, { $inc: { hiredCount: 1 } }).exec();
+  const lawyer = await Lawyer.findByIdAndUpdate(
+    lawyerId,
+    { $inc: { hiredCount: 1 } },
+    { new: true }
+  ).exec();
+
+  if (lawyer) {
+    const threshold = Number(process.env.UNPUBLISH_THRESHOLD ?? 10);
+    if (lawyer.hiredCount >= threshold && lawyer.published) {
+      lawyer.published = false;
+      await lawyer.save();
+
+      // Find lawyer user email to notify
+      try {
+        const User = (await import("../models/User")).default;
+        const lawyerUser = await User.findById(lawyer.userId).exec();
+        if (lawyerUser) {
+          const { logEmail } = await import("./email-service");
+          logEmail(
+            lawyerUser.email,
+            "Profile Unpublished: Hiring Limit Reached",
+            `Hi ${lawyer.name},\n\nYour profile has been unpublished because you have reached the platform threshold of ${threshold} hires. Please review your active cases and re-publish your profile when you have capacity.\n\nBest regards,\nThe LegalEase Team`
+          );
+        }
+      } catch (e) {
+        console.error("Failed to send unpublish threshold email:", e);
+      }
+    }
+  }
 }
 
 export async function recomputeStatus(lawyerId: string, activeAcceptedUnpaid: number) {

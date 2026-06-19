@@ -71,6 +71,18 @@ router.post(
     const user = await User.create({ name, email, password: hashed, role });
     const token = generateToken({ userId: user._id.toString(), email: user.email, role: user.role });
 
+    // Trigger welcome email
+    try {
+      const { logEmail } = await import("../services/email-service");
+      logEmail(
+        user.email,
+        "Welcome to LegalEase!",
+        `Hi ${user.name},\n\nThank you for registering on LegalEase as a ${user.role}.\n\nBest regards,\nThe LegalEase Team`
+      );
+    } catch (e) {
+      console.error("Email trigger failed:", e);
+    }
+
     res.status(201).json({ token, user: toUserResponse(user) });
   })
 );

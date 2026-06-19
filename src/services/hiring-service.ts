@@ -61,6 +61,22 @@ export async function createHire(userId: string, lawyerId: string) {
     fee: lawyer.fee
   });
 
+  // Trigger email to lawyer
+  try {
+    const User = (await import("../models/User")).default;
+    const lawyerUser = await User.findById(lawyer.userId).exec();
+    if (lawyerUser) {
+      const { logEmail } = await import("./email-service");
+      logEmail(
+        lawyerUser.email,
+        "New Hiring Request!",
+        `Hi ${lawyer.name},\n\nYou have received a new hiring request from a user. Please log in to your dashboard to accept or reject it.\n\nBest regards,\nThe LegalEase Team`
+      );
+    }
+  } catch (e) {
+    console.error("Failed to send hiring creation email:", e);
+  }
+
   return toDto(hire);
 }
 
@@ -135,6 +151,21 @@ export async function respondToHire(id: string, lawyerUserId: string, status: "a
 
   const { recomputeStatus } = await import("./lawyer-service");
   await recomputeStatus(String(lawyer._id), activeAcceptedCount);
+
+  // Trigger email to user
+  try {
+    const userDoc = hire.userId as any;
+    if (userDoc && userDoc.email) {
+      const { logEmail } = await import("./email-service");
+      logEmail(
+        userDoc.email,
+        `Hiring Request ${status}!`,
+        `Hi ${userDoc.name},\n\nYour hiring request to ${lawyer.name} has been ${status}.\n\nBest regards,\nThe LegalEase Team`
+      );
+    }
+  } catch (e) {
+    console.error("Failed to send hiring response email:", e);
+  }
 
   return toDto(hire);
 }

@@ -125,6 +125,22 @@ export async function handleWebhook(body: string | Buffer, signature: string) {
       });
 
       await Lawyer.findByIdAndUpdate(metadata.lawyerId, { $set: { published: true } }).exec();
+
+      // Trigger payment success email
+      try {
+        const User = (await import("../models/User")).default;
+        const user = await User.findById(metadata.userId).exec();
+        if (user) {
+          const { logEmail } = await import("./email-service");
+          logEmail(
+            user.email,
+            "Payment Succeeded: Profile Published",
+            `Hi ${user.name},\n\nYour payment of $99.00 was successful. Your lawyer profile has been successfully published on LegalEase!\n\nBest regards,\nThe LegalEase Team`
+          );
+        }
+      } catch (e) {
+        console.error("Failed to send publish payment email:", e);
+      }
     } else if (metadata.type === "hire_fee") {
       await Transaction.create({
         userId: new Types.ObjectId(metadata.userId),
@@ -148,6 +164,32 @@ export async function handleWebhook(body: string | Buffer, signature: string) {
       }).exec();
       
       await recomputeStatus(metadata.lawyerId, activeAcceptedCount);
+
+      // Trigger hiring payment emails
+      try {
+        const User = (await import("../models/User")).default;
+        const user = await User.findById(metadata.userId).exec();
+        const lawyer = await Lawyer.findById(metadata.lawyerId).exec();
+        if (user && lawyer) {
+          const { logEmail } = await import("./email-service");
+          logEmail(
+            user.email,
+            "Payment Succeeded: Consultation Confirmed",
+            `Hi ${user.name},\n\nYour payment for consultation services with ${lawyer.name} was successful. The lawyer has been notified.\n\nBest regards,\nThe LegalEase Team`
+          );
+          
+          const lawyerUser = await User.findById(lawyer.userId).exec();
+          if (lawyerUser) {
+            logEmail(
+              lawyerUser.email,
+              "Consultation Payment Received!",
+              `Hi ${lawyer.name},\n\nThe client ${user.name} has paid the consultation fee. You can now begin coordination.\n\nBest regards,\nThe LegalEase Team`
+            );
+          }
+        }
+      } catch (e) {
+        console.error("Failed to send hiring payment email:", e);
+      }
     }
   }
 
