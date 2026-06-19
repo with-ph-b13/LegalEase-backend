@@ -26,8 +26,7 @@ router.post(
   "/publish-fee",
   requireRole("lawyer"),
   asyncHandler(async (req: Request, res: Response) => {
-    const { lawyerId } = req.body;
-    const result = await paymentService.createPublishCheckout(lawyerId, req.currentUser!.userId);
+    const result = await paymentService.createPublishCheckout(req.currentUser!.userId);
     res.json(result);
   })
 );
