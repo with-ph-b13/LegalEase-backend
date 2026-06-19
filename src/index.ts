@@ -15,6 +15,8 @@ import adminRoutes from "./routes/admin";
 import shortlistRoutes from "./routes/shortlist";
 import User from "./models/User";
 
+import { authRateLimiter } from "./middleware/rate-limit";
+
 const app = express();
 
 app.use(cors({ origin: env.CLIENT_URL, credentials: true }));
@@ -31,7 +33,7 @@ app.get("/health", (_req, res) => {
   res.json({ status: "ok", env: env.NODE_ENV });
 });
 
-app.use("/api/auth", authRoutes);
+app.use("/api/auth", authRateLimiter, authRoutes);
 app.use("/api/lawyers", lawyerRoutes);
 app.use("/api/hirings", hiringRoutes);
 app.use("/api/comments", commentRoutes);

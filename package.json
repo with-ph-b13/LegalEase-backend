@@ -12,6 +12,7 @@
     "cors": "^2",
     "dotenv": "^16",
     "express": "^5",
+    "express-rate-limit": "^8.5.2",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^8",
     "passport": "^0.7.0",

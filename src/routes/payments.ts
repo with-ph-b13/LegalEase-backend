@@ -4,6 +4,8 @@ import { authMiddleware, requireRole } from "../middleware/auth";
 import * as paymentService from "../services/payment-service";
 import express from "express";
 
+import { paymentRateLimiter } from "../middleware/rate-limit";
+
 const router = Router();
 
 // Webhook needs raw body to verify signature
@@ -20,6 +22,7 @@ router.post(
   })
 );
 
+router.use(paymentRateLimiter);
 router.use(authMiddleware);
 
 router.post(
