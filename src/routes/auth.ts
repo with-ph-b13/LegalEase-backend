@@ -126,6 +126,35 @@ router.get(
   })
 );
 
+import { z } from "zod";
+const updateProfileSchema = z.object({
+  name: z.string().min(2).optional(),
+  avatar: z.string().url().optional(),
+});
+
+router.patch(
+  "/me",
+  authMiddleware,
+  asyncHandler(async (req: Request, res: Response) => {
+    if (!req.currentUser) throw new HttpError(401, "Not authenticated");
+    
+    const parsed = updateProfileSchema.safeParse(req.body);
+    if (!parsed.success) {
+      throw new HttpError(400, parsed.error.issues[0]?.message || "Invalid payload");
+    }
+
+    const updated = await User.findByIdAndUpdate(
+      req.currentUser.userId,
+      { $set: parsed.data },
+      { new: true, runValidators: true }
+    ).select("-password");
+
+    if (!updated) throw new HttpError(404, "User not found");
+    
+    res.json(toUserResponse(updated));
+  })
+);
+
 router.get(
   "/google",
   (req: Request, res: Response, next: NextFunction) => {
