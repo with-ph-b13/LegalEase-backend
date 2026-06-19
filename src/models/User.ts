@@ -21,6 +21,7 @@ const userSchema = new Schema<IUser>(
     avatar: { type: String },
     googleId: { type: String, unique: true, sparse: true },
     role: { type: String, enum: ["admin", "user", "lawyer"], default: "user" },
+    shortlist: [{ type: Schema.Types.ObjectId, ref: "Lawyer" }],
   },
   { timestamps: true }
 );
