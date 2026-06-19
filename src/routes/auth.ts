@@ -11,13 +11,14 @@ import { env } from "../config/env";
 
 const router = Router();
 
-function toUserResponse(user: { _id: unknown; email: string; name: string; avatar?: string; role: Role }) {
+function toUserResponse(user: { _id: unknown; email: string; name: string; avatar?: string; role: Role; password?: string }) {
   return {
     id: String(user._id),
     email: user.email,
     name: user.name,
     avatar: user.avatar,
     role: user.role,
+    hasPassword: Boolean(user.password),
   };
 }
 
@@ -127,30 +128,70 @@ router.get(
 );
 
 import { z } from "zod";
-const updateProfileSchema = z.object({
-  name: z.string().min(2).optional(),
-  avatar: z.string().url().optional(),
-});
+const updateProfileSchema = z
+  .object({
+    name: z.string().trim().min(2, "Name must be at least 2 characters").max(80).optional(),
+    avatar: z.string().url().optional(),
+    email: z.string().trim().toLowerCase().email("Invalid email").optional(),
+    currentPassword: z.string().min(1, "Current password is required").optional(),
+    newPassword: z.string().min(6, "Password must be at least 6 characters").max(128).optional(),
+  })
+  .strict();
 
 router.patch(
   "/me",
   authMiddleware,
   asyncHandler(async (req: Request, res: Response) => {
     if (!req.currentUser) throw new HttpError(401, "Not authenticated");
-    
+
     const parsed = updateProfileSchema.safeParse(req.body);
     if (!parsed.success) {
       throw new HttpError(400, parsed.error.issues[0]?.message || "Invalid payload");
     }
 
+    const { name, avatar, email, currentPassword, newPassword } = parsed.data;
+
+    const user = await User.findById(req.currentUser.userId);
+    if (!user) throw new HttpError(404, "User not found");
+
+    const wantsSensitiveChange = email !== undefined || newPassword !== undefined;
+    if (wantsSensitiveChange) {
+      if (!currentPassword) {
+        throw new HttpError(400, "Current password is required to change email or password");
+      }
+      if (!user.password) {
+        throw new HttpError(400, "This account does not have a password set");
+      }
+      const match = await bcrypt.compare(currentPassword, user.password);
+      if (!match) {
+        throw new HttpError(401, "Current password is incorrect");
+      }
+    }
+
+    const update: Record<string, unknown> = {};
+    if (name !== undefined) update.name = name;
+    if (avatar !== undefined) update.avatar = avatar;
+
+    if (email !== undefined && email !== user.email) {
+      const taken = await User.findOne({ email, _id: { $ne: user._id } });
+      if (taken) {
+        throw new HttpError(409, "Email already in use");
+      }
+      update.email = email;
+    }
+
+    if (newPassword !== undefined) {
+      update.password = await bcrypt.hash(newPassword, 12);
+    }
+
     const updated = await User.findByIdAndUpdate(
-      req.currentUser.userId,
-      { $set: parsed.data },
+      user._id,
+      { $set: update },
       { new: true, runValidators: true }
     ).select("-password");
 
     if (!updated) throw new HttpError(404, "User not found");
-    
+
     res.json(toUserResponse(updated));
   })
 );
