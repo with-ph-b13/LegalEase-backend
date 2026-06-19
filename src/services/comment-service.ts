@@ -34,8 +34,8 @@ export async function assertHasHired(userId: string, lawyerId: string) {
   }
 
   const existing = await Hiring.findOne({
-    userId: new Types.ObjectId(userId),
-    lawyerId: new Types.ObjectId(lawyerId),
+    userId,
+    lawyerId,
     status: { $in: ["accepted", "paid", "completed"] }
   }).exec();
 
@@ -48,8 +48,8 @@ export async function createComment(userId: string, lawyerId: string, text: stri
   await assertHasHired(userId, lawyerId);
 
   const doc = await Comment.create({
-    userId: new Types.ObjectId(userId),
-    lawyerId: new Types.ObjectId(lawyerId),
+    userId,
+    lawyerId,
     text,
     rating
   });
@@ -87,13 +87,13 @@ export async function listForLawyer(lawyerId: string, page = 1, limit = 10) {
   const skip = (page - 1) * limit;
 
   const [docs, total] = await Promise.all([
-    Comment.find({ lawyerId: new Types.ObjectId(lawyerId) })
+    Comment.find({ lawyerId })
       .populate("userId", "name avatar")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
       .exec(),
-    Comment.countDocuments({ lawyerId: new Types.ObjectId(lawyerId) }).exec(),
+    Comment.countDocuments({ lawyerId }).exec(),
   ]);
 
   return {
@@ -106,7 +106,7 @@ export async function listForLawyer(lawyerId: string, page = 1, limit = 10) {
 }
 
 export async function listForUser(userId: string) {
-  const docs = await Comment.find({ userId: new Types.ObjectId(userId) })
+  const docs = await Comment.find({ userId })
     .populate("lawyerId", "name specialization")
     .sort({ createdAt: -1 })
     .exec();

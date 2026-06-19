@@ -87,12 +87,12 @@ export async function createHireCheckout(hiringId: string, userId: string) {
 }
 
 export async function handleWebhook(body: string | Buffer, signature: string) {
-  let event: Stripe.Event;
+  let event: any;
 
   // For sandbox/demo testing, if no real webhook secret is provided, bypass signature verification
   if (env.STRIPE_WEBHOOK_SECRET === "whsec_mock" || env.STRIPE_WEBHOOK_SECRET === "whsec_your_secret_here" || !signature) {
     try {
-      event = JSON.parse(body.toString()) as Stripe.Event;
+      event = JSON.parse(body.toString());
       console.log("⚠️ Bypassed Stripe webhook signature verification (Demo mode)");
     } catch (err: any) {
       throw new HttpError(400, "Invalid JSON payload");
@@ -106,7 +106,7 @@ export async function handleWebhook(body: string | Buffer, signature: string) {
   }
 
   if (event.type === "checkout.session.completed") {
-    const session = event.data.object as Stripe.Checkout.Session;
+    const session = event.data.object as any;
     const metadata = session.metadata || {};
 
     // Check idempotency

@@ -102,7 +102,7 @@ export async function getLawyerById(id: string) {
 }
 
 export async function getLawyerByUserId(userId: string) {
-  const doc = await Lawyer.findOne({ userId: new Types.ObjectId(userId) }).exec();
+  const doc = await Lawyer.findOne({ userId }).exec();
   if (!doc) return null;
   return toDto(doc);
 }
@@ -118,7 +118,7 @@ interface UpsertPayload {
 
 export async function upsertOwnProfile(userId: string, payload: UpsertPayload) {
   const doc = await Lawyer.findOneAndUpdate(
-    { userId: new Types.ObjectId(userId) },
+    { userId },
     {
       $set: {
         name: payload.name,
@@ -128,7 +128,7 @@ export async function upsertOwnProfile(userId: string, payload: UpsertPayload) {
         fee: payload.fee,
         imageUrl: payload.imageUrl,
       },
-      $setOnInsert: { userId: new Types.ObjectId(userId), status: "available", published: false, hiredCount: 0 },
+      $setOnInsert: { userId, status: "available", published: false, hiredCount: 0 },
     },
     { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
   ).exec();
@@ -137,7 +137,7 @@ export async function upsertOwnProfile(userId: string, payload: UpsertPayload) {
 
 export async function updateOwnProfile(userId: string, payload: Partial<UpsertPayload & { status: LawyerStatus }>) {
   const doc = await Lawyer.findOneAndUpdate(
-    { userId: new Types.ObjectId(userId) },
+    { userId },
     { $set: payload },
     { new: true, runValidators: true }
   ).exec();

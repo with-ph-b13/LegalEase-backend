@@ -113,7 +113,7 @@ export async function getHireById(id: string, userId: string, role: string) {
     throw new HttpError(404, "Hiring request not found");
   }
 
-  const isUser = String(doc.userId._id || doc.userId) === userId;
+  const isUser = String((doc.userId as any)._id || doc.userId) === userId;
   const isLawyer = String((doc.lawyerId as any).userId) === userId;
 
   if (!isUser && !isLawyer && role !== "admin") {
@@ -128,13 +128,13 @@ export async function respondToHire(id: string, lawyerUserId: string, status: "a
     throw new HttpError(400, "Invalid hiring id");
   }
 
-  const lawyer = await Lawyer.findOne({ userId: new Types.ObjectId(lawyerUserId) }).exec();
+  const lawyer = await Lawyer.findOne({ userId: lawyerUserId }).exec();
   if (!lawyer) {
     throw new HttpError(404, "Lawyer profile not found");
   }
 
   const hire = await Hiring.findOneAndUpdate(
-    { _id: new Types.ObjectId(id), lawyerId: lawyer._id, status: "pending" },
+    { _id: id, lawyerId: lawyer._id, status: "pending" },
     { $set: { status } },
     { new: true }
   ).populate("userId", "name email").exec();
