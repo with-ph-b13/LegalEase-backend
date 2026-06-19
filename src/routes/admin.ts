@@ -80,4 +80,59 @@ router.delete(
   })
 );
 
+router.get(
+  "/lawyers",
+  asyncHandler(async (req: Request, res: Response) => {
+    const page = parseInt(req.query.page as string || "1", 10);
+    const limit = parseInt(req.query.limit as string || "20", 10);
+    const skip = (page - 1) * limit;
+
+    const Lawyer = (await import("../models/Lawyer")).default;
+
+    const [lawyers, total] = await Promise.all([
+      Lawyer.find().populate("userId", "name email").sort({ createdAt: -1 }).skip(skip).limit(limit).exec(),
+      Lawyer.countDocuments().exec()
+    ]);
+
+    res.json({
+      data: lawyers,
+      page,
+      limit,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / limit))
+    });
+  })
+);
+
+router.patch(
+  "/lawyers/:id/publish",
+  asyncHandler(async (req: Request, res: Response) => {
+    const { published } = req.body;
+    const Lawyer = (await import("../models/Lawyer")).default;
+    
+    const lawyer = await Lawyer.findByIdAndUpdate(
+      req.params.id, 
+      { $set: { published: !!published } },
+      { new: true }
+    );
+    
+    if (!lawyer) throw new HttpError(404, "Lawyer not found");
+    res.json({ data: lawyer });
+  })
+);
+
+router.delete(
+  "/lawyers/:id",
+  asyncHandler(async (req: Request, res: Response) => {
+    const Lawyer = (await import("../models/Lawyer")).default;
+    const lawyer = await Lawyer.findByIdAndDelete(req.params.id);
+    if (!lawyer) throw new HttpError(404, "Lawyer not found");
+    
+    // Cascading: optionally we could delete comments/hirings here.
+    // For now, we'll leave them as orphaned records or handle via DB triggers.
+    
+    res.json({ success: true });
+  })
+);
+
 export default router;
