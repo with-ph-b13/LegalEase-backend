@@ -59,7 +59,7 @@ router.get(
 router.get(
   "/:id",
   asyncHandler(async (req: Request, res: Response) => {
-    const lawyer = await lawyerService.getLawyerById(req.params.id);
+    const lawyer = await lawyerService.getLawyerById(req.params.id as string);
     res.json({ data: lawyer });
   })
 );
@@ -102,8 +102,8 @@ router.patch(
     if (!parsed.success) {
       throw new HttpError(400, parsed.error.issues[0]?.message || "Invalid payload");
     }
-    await lawyerService.assertOwner(req.params.id, req.currentUser!.userId);
-    const updated = await lawyerService.setPublished(req.params.id, false).then(async () => {
+    await lawyerService.assertOwner(req.params.id as string, req.currentUser!.userId);
+    const updated = await lawyerService.setPublished(req.params.id as string, false).then(async () => {
       return lawyerService.updateOwnProfile(req.currentUser!.userId, parsed.data);
     });
     res.json({ data: updated });
@@ -119,11 +119,11 @@ router.delete(
     }
     const role = req.currentUser!.role;
     if (role === "lawyer") {
-      await lawyerService.assertOwner(req.params.id, req.currentUser!.userId);
+      await lawyerService.assertOwner(req.params.id as string, req.currentUser!.userId);
     } else if (role !== "admin") {
       throw new HttpError(403, "Insufficient permissions");
     }
-    await lawyerService.deleteLawyer(req.params.id);
+    await lawyerService.deleteLawyer(req.params.id as string);
     res.json({ data: { id: req.params.id } });
   })
 );
@@ -133,8 +133,8 @@ router.patch(
   authMiddleware,
   requireRole("lawyer"),
   asyncHandler(async (req: Request, res: Response) => {
-    await lawyerService.assertOwner(req.params.id, req.currentUser!.userId);
-    const updated = await lawyerService.setPublished(req.params.id, true);
+    await lawyerService.assertOwner(req.params.id as string, req.currentUser!.userId);
+    const updated = await lawyerService.setPublished(req.params.id as string, true);
     res.json({ data: updated });
   })
 );
@@ -147,9 +147,9 @@ router.patch(
     if (!mongoose.isValidObjectId(req.params.id)) {
       throw new HttpError(400, "Invalid lawyer id");
     }
-    await lawyerService.assertOwner(req.params.id, req.currentUser!.userId);
-    const current = await lawyerService.getLawyerById(req.params.id);
-    const updated = await lawyerService.setPublished(req.params.id, !current.published);
+    await lawyerService.assertOwner(req.params.id as string, req.currentUser!.userId);
+    const current = await lawyerService.getLawyerById(req.params.id as string);
+    const updated = await lawyerService.setPublished(req.params.id as string, !current.published);
     res.json({ data: updated });
   })
 );
@@ -163,8 +163,8 @@ router.patch(
     if (status !== "available" && status !== "busy") {
       throw new HttpError(400, "status must be 'available' or 'busy'");
     }
-    await lawyerService.assertOwner(req.params.id, req.currentUser!.userId);
-    const updated = await lawyerService.setStatus(req.params.id, status);
+    await lawyerService.assertOwner(req.params.id as string, req.currentUser!.userId);
+    const updated = await lawyerService.setStatus(req.params.id as string, status);
     res.json({ data: updated });
   })
 );

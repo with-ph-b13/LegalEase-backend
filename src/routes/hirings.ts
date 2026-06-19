@@ -41,7 +41,7 @@ router.get(
 router.get(
   "/:id",
   asyncHandler(async (req: Request, res: Response) => {
-    const result = await hiringService.getHireById(req.params.id, req.currentUser!.userId, req.currentUser!.role);
+    const result = await hiringService.getHireById(req.params.id as string, req.currentUser!.userId, req.currentUser!.role);
     res.json(result);
   })
 );
@@ -54,7 +54,7 @@ router.patch(
     if (status !== "accepted" && status !== "rejected") {
       return res.status(400).json({ error: "Invalid status. Must be accepted or rejected." });
     }
-    const result = await hiringService.respondToHire(req.params.id, req.currentUser!.userId, status);
+    const result = await hiringService.respondToHire(req.params.id as string, req.currentUser!.userId, status);
     res.json(result);
   })
 );
