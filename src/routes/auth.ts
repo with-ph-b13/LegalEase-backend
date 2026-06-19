@@ -154,13 +154,13 @@ router.patch(
     const user = await User.findById(req.currentUser.userId);
     if (!user) throw new HttpError(404, "User not found");
 
-    const wantsSensitiveChange = email !== undefined || newPassword !== undefined;
-    if (wantsSensitiveChange) {
+    const emailChanging = email !== undefined && email !== user.email;
+    const passwordChanging = newPassword !== undefined;
+    const wantsSensitiveChange = emailChanging || passwordChanging;
+
+    if (wantsSensitiveChange && user.password) {
       if (!currentPassword) {
         throw new HttpError(400, "Current password is required to change email or password");
-      }
-      if (!user.password) {
-        throw new HttpError(400, "This account does not have a password set");
       }
       const match = await bcrypt.compare(currentPassword, user.password);
       if (!match) {
@@ -172,7 +172,7 @@ router.patch(
     if (name !== undefined) update.name = name;
     if (avatar !== undefined) update.avatar = avatar;
 
-    if (email !== undefined && email !== user.email) {
+    if (emailChanging) {
       const taken = await User.findOne({ email, _id: { $ne: user._id } });
       if (taken) {
         throw new HttpError(409, "Email already in use");
@@ -180,7 +180,7 @@ router.patch(
       update.email = email;
     }
 
-    if (newPassword !== undefined) {
+    if (passwordChanging) {
       update.password = await bcrypt.hash(newPassword, 12);
     }
 
