@@ -1,5 +1,5 @@
 import { Router, Request, Response } from "express";
-import { asyncHandler } from "../middleware/async-handler";
+import { asyncHandler } from "../lib/async-handler";
 import { requireAuth, requireRole } from "../middleware/auth";
 import * as hiringService from "../services/hiring-service";
 
