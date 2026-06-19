@@ -11,6 +11,7 @@ import commentRoutes from "./routes/comments";
 import transactionRoutes from "./routes/transactions";
 import adminRoutes from "./routes/admin";
 import shortlistRoutes from "./routes/shortlist";
+import uploadRoutes from "./routes/uploads";
 import { authRateLimiter } from "./middleware/rate-limit";
 import paymentRoutes from "./routes/payments";
 
@@ -36,6 +37,7 @@ app.use("/api/payments", paymentRoutes);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/shortlist", shortlistRoutes);
+app.use("/api/upload", express.json({ limit: "10mb" }), uploadRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
