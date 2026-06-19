@@ -10,6 +10,8 @@ const envSchema = z.object({
   CLIENT_URL: z.string().url().default("http://localhost:3000"),
   ADMIN_EMAIL: z.string().email().optional(),
   ADMIN_PASSWORD: z.string().min(6).optional(),
+  STRIPE_SECRET_KEY: z.string().default("sk_test_mock"),
+  STRIPE_WEBHOOK_SECRET: z.string().default("whsec_mock"),
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
 });

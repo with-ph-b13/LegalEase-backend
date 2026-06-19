@@ -15,6 +15,12 @@ import User from "./models/User";
 const app = express();
 
 app.use(cors({ origin: env.CLIENT_URL, credentials: true }));
+
+import paymentRoutes from "./routes/payments";
+
+// Webhook needs raw body to verify signature
+app.use("/api/payments/webhook", express.raw({ type: "application/json" }));
+
 app.use(express.json());
 app.use(passport.initialize());
 
@@ -26,6 +32,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/lawyers", lawyerRoutes);
 app.use("/api/hirings", hiringRoutes);
 app.use("/api/comments", commentRoutes);
+app.use("/api/payments", paymentRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

@@ -16,6 +16,7 @@
     "mongoose": "^8",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
+    "stripe": "^22.2.1",
     "zod": "^4.4.3"
   },
   "devDependencies": {
@@ -26,6 +27,7 @@
     "@types/node": "^22",
     "@types/passport": "^1.0.17",
     "@types/passport-google-oauth20": "^2.0.17",
+    "@types/stripe": "^8.0.417",
     "tsx": "^4",
     "typescript": "^5"
   }

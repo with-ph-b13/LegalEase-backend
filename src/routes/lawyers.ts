@@ -128,16 +128,7 @@ router.delete(
   })
 );
 
-router.patch(
-  "/:id/publish",
-  authMiddleware,
-  requireRole("lawyer"),
-  asyncHandler(async (req: Request, res: Response) => {
-    await lawyerService.assertOwner(req.params.id as string, req.currentUser!.userId);
-    const updated = await lawyerService.setPublished(req.params.id as string, true);
-    res.json({ data: updated });
-  })
-);
+// Removed free publish endpoint, handled by Stripe webhook
 
 router.patch(
   "/:id/toggle-publish",
@@ -149,6 +140,21 @@ router.patch(
     }
     await lawyerService.assertOwner(req.params.id as string, req.currentUser!.userId);
     const current = await lawyerService.getLawyerById(req.params.id as string);
+    
+    // If they are trying to publish it, enforce payment check
+    if (!current.published) {
+      const Transaction = (await import("../models/Transaction")).default;
+      const hasPaid = await Transaction.findOne({ 
+        lawyerId: current._id, 
+        type: "publish_fee", 
+        status: "succeeded" 
+      }).exec();
+      
+      if (!hasPaid) {
+        throw new HttpError(403, "You must pay the one-time publishing fee to go live.");
+      }
+    }
+    
     const updated = await lawyerService.setPublished(req.params.id as string, !current.published);
     res.json({ data: updated });
   })
