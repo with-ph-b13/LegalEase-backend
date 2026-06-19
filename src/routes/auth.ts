@@ -28,17 +28,20 @@ if (env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) {
         clientID: env.GOOGLE_CLIENT_ID,
         clientSecret: env.GOOGLE_CLIENT_SECRET,
         callbackURL: `${env.BACKEND_URL}/api/auth/callback/google`,
+        passReqToCallback: true,
       },
-      async (_accessToken, _refreshToken, profile, done) => {
+      async (req, _accessToken, _refreshToken, profile, done) => {
         try {
           let user = await User.findOne({ googleId: profile.id });
           if (!user) {
+            const state = req.query.state as string;
+            const role = state === "lawyer" ? "lawyer" : "user";
             user = await User.create({
               email: profile.emails?.[0]?.value || `${profile.id}@google.placeholder`,
               name: profile.displayName || "Google User",
               avatar: profile.photos?.[0]?.value,
               googleId: profile.id,
-              role: "user",
+              role,
             });
           }
           done(null, user as unknown as Express.User);
@@ -117,7 +120,8 @@ router.get(
     if (!env.GOOGLE_CLIENT_ID) {
       throw new HttpError(503, "Google login is not configured");
     }
-    passport.authenticate("google", { scope: ["profile", "email"], session: false })(req, res, next);
+    const state = req.query.state as string;
+    passport.authenticate("google", { scope: ["profile", "email"], session: false, state })(req, res, next);
   }
 );
 
