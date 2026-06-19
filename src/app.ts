@@ -22,7 +22,7 @@ app.use(cors({ origin: env.CLIENT_URL, credentials: true }));
 // Webhook needs raw body to verify signature
 app.use("/api/payments/webhook", express.raw({ type: "application/json" }));
 
-app.use(express.json());
+app.use(express.json({ limit: "10mb" }));
 app.use(passport.initialize());
 
 app.get("/health", (_req, res) => {
@@ -37,7 +37,7 @@ app.use("/api/payments", paymentRoutes);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/shortlist", shortlistRoutes);
-app.use("/api/upload", express.json({ limit: "10mb" }), uploadRoutes);
+app.use("/api/upload", uploadRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

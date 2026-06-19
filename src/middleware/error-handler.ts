@@ -31,6 +31,14 @@ export const errorHandler: ErrorRequestHandler = (
       res.status(400).json({ error: err.message });
       return;
     }
+    if ((err as { type?: string; status?: number }).type === "entity.too.large") {
+      res.status(413).json({ error: "Request body is too large" });
+      return;
+    }
+    if ((err as { type?: string }).type === "entity.parse.failed") {
+      res.status(400).json({ error: "Invalid JSON" });
+      return;
+    }
     if ((err as { code?: number }).code === 11000) {
       res.status(409).json({ error: "Duplicate value" });
       return;
