@@ -34,18 +34,33 @@ if (env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) {
       async (req, _accessToken, _refreshToken, profile, done) => {
         try {
           let user = await User.findOne({ googleId: profile.id });
+          let isNewUser = false;
           if (!user) {
-            const state = req.query.state as string;
-            const role = state === "lawyer" ? "lawyer" : "user";
-            user = await User.create({
-              email: profile.emails?.[0]?.value || `${profile.id}@google.placeholder`,
-              name: profile.displayName || "Google User",
-              avatar: profile.photos?.[0]?.value,
-              googleId: profile.id,
-              role,
-            });
+            const email = profile.emails?.[0]?.value;
+            if (email) {
+              const existingUser = await User.findOne({ email });
+              if (existingUser) {
+                existingUser.googleId = profile.id;
+                await existingUser.save();
+                user = existingUser;
+              }
+            }
+            
+            if (!user) {
+              isNewUser = true;
+              const state = req.query.state as string;
+              const role = state === "lawyer" ? "lawyer" : "user";
+              user = await User.create({
+                email: email || `${profile.id}@google.placeholder`,
+                name: profile.displayName || "Google User",
+                avatar: profile.photos?.[0]?.value,
+                googleId: profile.id,
+                role,
+              });
+            }
           }
-          done(null, user as unknown as Express.User);
+          const userWithFlag = Object.assign(user.toObject ? user.toObject() : user, { isNewUser });
+          done(null, userWithFlag as Express.User);
         } catch (err) {
           done(err as Error);
         }
@@ -196,6 +211,27 @@ router.patch(
   })
 );
 
+router.patch(
+  "/role",
+  authMiddleware,
+  asyncHandler(async (req: Request, res: Response) => {
+    if (!req.currentUser) throw new HttpError(401, "Not authenticated");
+    const roleSchema = z.object({ role: z.enum(["user", "lawyer"]) });
+    const parsed = roleSchema.safeParse(req.body);
+    if (!parsed.success) throw new HttpError(400, "Invalid role");
+    
+    const user = await User.findById(req.currentUser.userId);
+    if (!user) throw new HttpError(404, "User not found");
+    
+    // Allow updating role if it's their first time choosing, or they are just a user
+    user.role = parsed.data.role;
+    await user.save();
+    
+    const token = generateToken({ userId: String(user._id), email: user.email, role: user.role });
+    res.json({ token, user: toUserResponse(user) });
+  })
+);
+
 router.get(
   "/google",
   (req: Request, res: Response, next: NextFunction) => {
@@ -218,9 +254,13 @@ router.get(
         res.redirect(`${env.CLIENT_URL}/login?error=google_failed`);
         return;
       }
-      const u = user as { _id: unknown; email: string; role: Role };
+      const u = user as { _id: unknown; email: string; role: Role; isNewUser?: boolean };
       const token = generateToken({ userId: String(u._id), email: u.email, role: u.role });
-      res.redirect(`${env.CLIENT_URL}/?token=${token}`);
+      let redirectUrl = `${env.CLIENT_URL}/?token=${token}`;
+      if (u.isNewUser) {
+        redirectUrl += `&new=1`;
+      }
+      res.redirect(redirectUrl);
     })(req, res, next);
   }
 );
